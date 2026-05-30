@@ -119,6 +119,78 @@ class VMTools(ProxmoxTool):
         except Exception as e:
             return self._err("get_vm_config", e)
 
+    def get_vm_ip(self, node: str, vmid: str) -> List[Content]:
+        """Return current IP address(es) of a running VM via QEMU guest agent.
+
+        Uses GET /nodes/{node}/qemu/{vmid}/agent/network-get-interfaces.
+
+        Parameters:
+            node: Proxmox node name.
+            vmid: VM ID as a string.
+        """
+        try:
+            config = _as_dict(self.proxmox.nodes(node).qemu(vmid).config.get())
+            name = config.get("name") or f"VM-{vmid}"
+
+            raw_agent = self.proxmox.nodes(node).qemu(vmid).agent("network-get-interfaces").get()
+            agent_data = raw_agent
+            if isinstance(agent_data, dict):
+                agent_data = agent_data.get("result") or agent_data.get("data") or agent_data
+            if not isinstance(agent_data, list):
+                return self._json_fmt({
+                    "vmid": vmid,
+                    "name": name,
+                    "node": node,
+                    "interfaces": [],
+                    "primary_ip": None,
+                })
+
+            interfaces: List[Dict[str, Any]] = []
+            primary_ip: Optional[str] = None
+            for iface in agent_data:
+                if not isinstance(iface, dict):
+                    continue
+                iface_name = iface.get("name", "unknown")
+                if iface_name == "lo":
+                    continue
+                entry: Dict[str, Any] = {
+                    "name": iface_name,
+                    "mac_address": iface.get("hardware-address", ""),
+                }
+                ip_list: List[Dict[str, Any]] = []
+                for ip in iface.get("ip-addresses", []):
+                    if not isinstance(ip, dict):
+                        continue
+                    ip_entry: Dict[str, Any] = {
+                        "version": 4 if "ipv4" in str(ip.get("ip-address-type", "")).lower() else 6,
+                        "address": ip.get("ip-address", ""),
+                    }
+                    prefix = ip.get("prefix")
+                    if prefix is not None:
+                        try:
+                            ip_entry["prefix"] = int(prefix)
+                        except Exception:
+                            pass
+                    if ip_entry["address"]:
+                        if primary_ip is None and ip_entry["version"] == 4:
+                            primary_ip = ip_entry["address"]
+                        ip_list.append(ip_entry)
+                if ip_list:
+                    entry["ip_addresses"] = ip_list
+                interfaces.append(entry)
+
+            result = {
+                "vmid": vmid,
+                "name": name,
+                "node": node,
+                "interfaces": interfaces,
+                "primary_ip": primary_ip,
+            }
+            return self._json_fmt(result)
+
+        except Exception as e:
+            return self._err("get_vm_ip", e)
+
     def get_vms(self) -> List[Content]:
         """List all virtual machines across the cluster with detailed status.
 

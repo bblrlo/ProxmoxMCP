@@ -80,6 +80,21 @@ Returns a structured payload with:
 Example:
 {"vmid": "100", "name": "ubuntu", "status": "running", "cpu": {"cores": 2}, "disks": [...], "network": {...}}"""
 
+GET_VM_IP_DESC = """Get the current IP address(es) of a running QEMU virtual machine.
+
+Queries /nodes/{node}/qemu/{vmid}/agent/network-get-interfaces via QEMU guest agent.
+VM must be running with QEMU guest agent installed and enabled (agent: 1 in config).
+
+Parameters:
+node* - Proxmox node name (e.g. 'pve')
+vmid* - VM ID number (e.g. '100')
+
+Returns structured interface data with MAC, IP addresses, and primary IPv4 address.
+
+Example:
+{"vmid": "100", "name": "vm-name", "node": "pve", "interfaces": [...], "primary_ip": "10.0.0.100"}
+"""
+
 CREATE_VM_DESC = """Create a new virtual machine with specified configuration.
 
 Parameters:

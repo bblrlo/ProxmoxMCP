@@ -115,6 +115,10 @@
             "description": "Get comprehensive VM configuration including CPU, RAM, disks, network, and live IP addresses"
         },
         {
+            "name": "get_vm_ip",
+            "description": "Get current IP addresses of a running VM via QEMU guest agent"
+        },
+        {
             "name": "create_vm",
             "description": "Create a new virtual machine with specified resources"
         },

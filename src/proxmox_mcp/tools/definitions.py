@@ -61,6 +61,25 @@ vmid* - VM ID number (e.g. '100')
 Example:
 {"vmid": "100", "name": "ubuntu", "cores": 2, "memory": 4096, "scsi0": "local-lvm:vm-100-disk-0,size=20G"}"""
 
+GET_VM_INFO_DESC = """Get comprehensive configuration and runtime information for a virtual machine.
+
+Returns CPU, memory, disk, network configuration, and live IP addresses
+(via QEMU guest agent if available and VM is running).
+
+Parameters:
+node* - Host node name (e.g. 'pve')
+vmid* - VM ID number (e.g. '100')
+
+Returns a structured payload with:
+- Basic info: vmid, name, node, status
+- cpu: cores, sockets, type, usage percentage
+- memory: total and used in MiB
+- disks: bus, storage, size, format for each disk
+- network: configured interfaces (from config) and live IP info (from QEMU agent)
+
+Example:
+{"vmid": "100", "name": "ubuntu", "status": "running", "cpu": {"cores": 2}, "disks": [...], "network": {...}}"""
+
 CREATE_VM_DESC = """Create a new virtual machine with specified configuration.
 
 Parameters:
@@ -158,6 +177,57 @@ This will permanently remove:
 
 Example:
 Delete test VM with ID 998 on node pve"""
+
+UPDATE_VM_DESC = """Update configuration of a virtual machine (CPU, RAM, disks, network).
+
+NOTE: VM must be stopped to modify configuration. Use shutdown_vm or stop_vm first if the VM is running.
+
+Parameters:
+node* - Host node name (e.g. 'pve')
+vmid* - VM ID number (e.g. '100')
+
+CPU:
+cores - Number of CPU cores (optional)
+sockets - Number of CPU sockets (optional)
+cpu_type - CPU emulation type, e.g. 'host', 'kvm64' (optional)
+vcpus - Number of hotplugged vCPUs (optional)
+
+Memory:
+memory - Memory size in MB (optional)
+balloon - Balloon minimum memory in MB, 0 to disable (optional)
+
+Disks:
+disks - Dict of disk configs to add or update. Format: {"scsi0": "local-lvm:10,format=qcow2"} (optional)
+disk_resize - Dict of disks to resize. Format: {"scsi0": "+10G"} (optional, creates a tracked job)
+disk_delete - List of disk IDs to remove. Example: ["scsi1", "ide2"] (optional)
+
+Network:
+net0 - Network interface 0 config: "virtio,bridge=vmbr0,tag=10" (optional)
+net1 - Network interface 1 config (optional)
+net2 - Network interface 2 config (optional)
+net3 - Network interface 3 config (optional)
+
+Other:
+onboot - Start VM automatically when node boots (optional)
+agent - Enable QEMU guest agent: 1=enable, 0=disable (optional)
+boot - Boot order, e.g. "order=scsi0;ide2" (optional)
+bios - BIOS type: 'seabios' or 'ovmf' (optional)
+ostype - OS type, e.g. 'l26' for Linux (optional)
+tags - VM tags (optional)
+description - Description text (optional)
+startup - Startup and shutdown order (optional)
+scsihw - SCSI controller model (optional)
+vga - VGA type (optional)
+tablet - Enable USB tablet: 1=enable, 0=disable (optional)
+kvm - Enable KVM hardware virtualization: 1=enable, 0=disable (optional)
+machine - Machine type, e.g. 'q35' or 'pc' (optional)
+nameserver - DNS nameserver (optional)
+searchdomain - DNS search domain (optional)
+extra_config - Dict of additional Proxmox config keys (optional, advanced)
+
+Example:
+update_vm node='pve' vmid='100' cores=4 memory=8192 disk_resize={"scsi0": "+20G"}
+"""
 
 # Container tool descriptions
 GET_CONTAINERS_DESC = """List LXC containers across the cluster (or filter by node).

@@ -1087,6 +1087,13 @@ VM {vmid} ({vm_name}) is being deleted from node {node}"""
         machine: Optional[str] = None,
         nameserver: Optional[str] = None,
         searchdomain: Optional[str] = None,
+        ipconfig0: Optional[str] = None,
+        ipconfig1: Optional[str] = None,
+        ipconfig2: Optional[str] = None,
+        ipconfig3: Optional[str] = None,
+        ciuser: Optional[str] = None,
+        cipassword: Optional[str] = None,
+        sshkeys: Optional[str] = None,
         extra_config: Optional[Dict[str, str]] = None,
     ) -> List[Content]:
         """Update configuration of a virtual machine.
@@ -1121,6 +1128,13 @@ VM {vmid} ({vm_name}) is being deleted from node {node}"""
             machine: Machine type
             nameserver: DNS nameserver
             searchdomain: DNS search domain
+            ipconfig0: IP config for net0: "ip=10.0.0.1/24,gw=10.0.0.1" (optional)
+            ipconfig1: IP config for net1 (optional)
+            ipconfig2: IP config for net2 (optional)
+            ipconfig3: IP config for net3 (optional)
+            ciuser: Cloud-init user (optional)
+            cipassword: Cloud-init password (optional)
+            sshkeys: SSH public keys (base64 encoded, optional)
             extra_config: Additional Proxmox config keys
 
         Returns:
@@ -1223,6 +1237,27 @@ VM {vmid} ({vm_name}) is being deleted from node {node}"""
             if searchdomain is not None:
                 config_params["searchdomain"] = searchdomain
                 changes.append(f"searchdomain={searchdomain}")
+            if ipconfig0 is not None:
+                config_params["ipconfig0"] = ipconfig0
+                changes.append(f"ipconfig0={ipconfig0}")
+            if ipconfig1 is not None:
+                config_params["ipconfig1"] = ipconfig1
+                changes.append(f"ipconfig1={ipconfig1}")
+            if ipconfig2 is not None:
+                config_params["ipconfig2"] = ipconfig2
+                changes.append(f"ipconfig2={ipconfig2}")
+            if ipconfig3 is not None:
+                config_params["ipconfig3"] = ipconfig3
+                changes.append(f"ipconfig3={ipconfig3}")
+            if ciuser is not None:
+                config_params["ciuser"] = ciuser
+                changes.append(f"ciuser={ciuser}")
+            if cipassword is not None:
+                config_params["cipassword"] = cipassword
+                changes.append("cipassword=<set>")
+            if sshkeys is not None:
+                config_params["sshkeys"] = sshkeys
+                changes.append("sshkeys=<set>")
             if extra_config is not None:
                 config_params.update(extra_config)
                 for k, v in extra_config.items():

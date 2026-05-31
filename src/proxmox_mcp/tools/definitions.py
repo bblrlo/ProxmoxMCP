@@ -238,6 +238,15 @@ kvm - Enable KVM hardware virtualization: 1=enable, 0=disable (optional)
 machine - Machine type, e.g. 'q35' or 'pc' (optional)
 nameserver - DNS nameserver (optional)
 searchdomain - DNS search domain (optional)
+
+Cloud-Init:
+ipconfig0 - IP config for net0: "ip=10.0.0.1/24,gw=10.0.0.1" (optional)
+ipconfig1 - IP config for net1 (optional)
+ipconfig2 - IP config for net2 (optional)
+ipconfig3 - IP config for net3 (optional)
+ciuser - Cloud-init user (optional)
+cipassword - Cloud-init password (optional)
+sshkeys - SSH public keys (base64 encoded, optional)
 extra_config - Dict of additional Proxmox config keys (optional, advanced)
 
 Example:

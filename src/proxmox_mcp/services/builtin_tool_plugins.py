@@ -417,6 +417,13 @@ class VMToolsPlugin(RegistryPluginBase):
             nameserver: Annotated[Optional[str], Field(description="DNS nameserver", default=None)] = None,
             searchdomain: Annotated[Optional[str], Field(description="DNS search domain", default=None)] = None,
             extra_config: Annotated[Optional[Dict[str, str]], Field(description="Additional Proxmox config keys (advanced)", default=None)] = None,
+            ipconfig0: Annotated[Optional[str], Field(description="IP config for net0: \"ip=10.0.0.1/24,gw=10.0.0.1\"", default=None)] = None,
+            ipconfig1: Annotated[Optional[str], Field(description="IP config for net1", default=None)] = None,
+            ipconfig2: Annotated[Optional[str], Field(description="IP config for net2", default=None)] = None,
+            ipconfig3: Annotated[Optional[str], Field(description="IP config for net3", default=None)] = None,
+            ciuser: Annotated[Optional[str], Field(description="Cloud-init user", default=None)] = None,
+            cipassword: Annotated[Optional[str], Field(description="Cloud-init password", default=None)] = None,
+            sshkeys: Annotated[Optional[str], Field(description="SSH public keys (base64 encoded)", default=None)] = None,
             approval_token: Annotated[Optional[str], Field(description="Optional approval token for high-risk operations", default=None)] = None,
         ) -> Any:
             return self._wrap_sync(server, "update_vm", server.vm_tools.update_vm, high_risk=True)(
@@ -451,6 +458,13 @@ class VMToolsPlugin(RegistryPluginBase):
                 nameserver=nameserver,
                 searchdomain=searchdomain,
                 extra_config=extra_config,
+                ipconfig0=ipconfig0,
+                ipconfig1=ipconfig1,
+                ipconfig2=ipconfig2,
+                ipconfig3=ipconfig3,
+                ciuser=ciuser,
+                cipassword=cipassword,
+                sshkeys=sshkeys,
             )
 
 

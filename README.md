@@ -238,21 +238,93 @@ This demo is a direct terminal recording of `qwen/qwen3.6-plus` driving a live M
 
 [Watch the MP4 version](docs/assets/proxmoxmcp-demo.mp4)
 
-## Choose The Right Tool
+## Tool Reference
 
-Start with read-only discovery, then move to mutating tools only after the target node, storage, VMID, and permissions are clear.
+The server exposes **45+ MCP tools** organised by domain. Start with read-only discovery, then move to mutating tools only after the target node, storage, VMID, and permissions are clear.
 
-| Operator goal | Start with | Then use | Notes |
-| --- | --- | --- | --- |
-| Inspect the cluster | `get_nodes`, `get_cluster_status` | `get_storage`, `get_vms`, `get_containers` | Best first health check after client install |
-| Create or manage a VM | `get_nodes`, `get_storage` | `create_vm`, `start_vm`, `stop_vm`, `delete_vm` | Long-running mutations return `job_id` and Proxmox `task_id` |
-| Manage LXCs | `get_containers`, `get_storage` | `create_container`, `start_container`, `stop_container`, `delete_container` | SSH-backed command tools require the optional `ssh` config |
-| Roll back risky changes | `list_snapshots` with `vm_type=qemu` or `vm_type=lxc` | `create_snapshot`, `rollback_snapshot`, `delete_snapshot` | Create a snapshot before destructive workflow tests |
-| Run commands inside guests | VM or container status tools | `execute_vm_command`, `execute_container_command` | VM path needs QEMU Guest Agent; LXC path needs SSH to the Proxmox node |
-| Track async work | mutation response with `job_id` | `poll_job`, `get_job`, `list_jobs`, `retry_job`, `cancel_job` | Use `job_id` for agent/user conversations and `task_id` for raw Proxmox traceability |
-| Automate from HTTP tools | `/openapi.json` | `/jobs`, `/health`, generated tool routes | Use bearer auth and keep CORS restricted outside local development |
+### Cluster & Node
 
-For the full tool map, see the [Tool Selection Guide](docs/wiki/Tool%20Selection%20Guide.md) and [API & Tool Reference](docs/wiki/API%20%26%20Tool%20Reference.md).
+| Tool | Description |
+|------|-------------|
+| `get_nodes` | List all nodes with status, CPU, memory, and role information |
+| `get_node_status` | Detailed status for a specific node |
+| `get_cluster_status` | Overall cluster health, quorum, and HA status |
+| `get_storage` | List storage pools with usage and configuration |
+
+### VM Lifecycle
+
+| Tool | Description |
+|------|-------------|
+| `get_vms` | List all VMs across the cluster with status and resource usage |
+| `get_vm_config` | Full VM hardware configuration (CPU, memory, disk, network, BIOS, boot) |
+| `get_vm_info` | Comprehensive VM config + runtime info including live IPs |
+| `get_vm_ip` | Live IP addresses via QEMU guest agent |
+| `create_vm` | Create a new VM with CPU, memory, disk, storage, and network |
+| `clone_vm` | Clone an existing VM (full or linked clone) |
+| `update_vm` | Update VM config — CPU, RAM, disks, network, and cloud-init params |
+| `delete_vm` | Permanently delete a VM with all disks and snapshots |
+| `start_vm` | Power on a virtual machine |
+| `stop_vm` | Force stop a virtual machine |
+| `shutdown_vm` | Graceful ACPI shutdown of a virtual machine |
+| `reset_vm` | Reset / restart a virtual machine |
+| `execute_vm_command` | Execute shell commands in a VM via QEMU guest agent |
+
+### LXC / Container Lifecycle
+
+| Tool | Description |
+|------|-------------|
+| `get_containers` | List LXC containers with optional live CPU/memory stats |
+| `get_container_config` | Full LXC configuration (network, mounts, features, limits) |
+| `get_container_ip` | Current IP addresses of a running container (works with DHCP) |
+| `create_container` | Create a new LXC container from an OS template |
+| `delete_container` | Permanently delete a container with all data |
+| `start_container` | Start one or more containers (supports multi-select grammar) |
+| `stop_container` | Stop containers (graceful shutdown or force) |
+| `restart_container` | Reboot containers |
+| `update_container_resources` | Update CPU cores, memory, swap, or disk size |
+| `execute_container_command` | Execute commands inside a container via SSH (`pct exec`) |
+| `update_container_ssh_keys` | Inject or replace SSH authorized_keys for root in a container |
+
+### Snapshots
+
+| Tool | Description |
+|------|-------------|
+| `list_snapshots` | List snapshots for a VM or container |
+| `create_snapshot` | Create a snapshot with optional RAM state |
+| `delete_snapshot` | Delete a snapshot |
+| `rollback_snapshot` | Roll back to a previous snapshot (stops the VM/CT) |
+
+### Backup & Restore
+
+| Tool | Description |
+|------|-------------|
+| `list_backups` | List available backups across the cluster |
+| `create_backup` | Create a backup with configurable compression and mode |
+| `restore_backup` | Restore a VM/container from a backup archive |
+| `delete_backup` | Permanently delete a backup file from storage |
+
+### ISO & Templates
+
+| Tool | Description |
+|------|-------------|
+| `list_isos` | List ISO images available across the cluster |
+| `list_templates` | List OS templates (vztmpl) for container creation |
+| `download_iso` | Download an ISO from a URL to Proxmox storage |
+| `delete_iso` | Delete an ISO or template from storage |
+
+### Job Tracking
+
+| Tool | Description |
+|------|-------------|
+| `list_jobs` | List tracked long-running jobs with optional status/tool filter |
+| `get_job` | Get the current state of a tracked job by job\_id |
+| `poll_job` | Poll the backing Proxmox task and refresh job status/progress |
+| `cancel_job` | Best-effort cancel for a tracked long-running job |
+| `retry_job` | Retry a tracked job using its stored retry recipe |
+
+Long-running mutations (create, start, stop, clone, backup, restore, ISO download, disk resize) return both a `job_id` for stable tracking and a Proxmox `task_id` (UPID). The job store persists to `proxmox-jobs.sqlite3` by default.
+
+For the full tool map including parameters and prerequisites, see the [Tool Selection Guide](docs/wiki/Tool%20Selection%20Guide.md) and [API & Tool Reference](docs/wiki/API%20%26%20Tool%20Reference.md).
 
 ## Safety Model
 
@@ -278,13 +350,15 @@ Supported workflow areas:
 
 | Capability Area | Availability |
 | --- | --- |
-| VM create / start / stop / delete | Available |
+| 45+ MCP tools covering VMs, LXCs, snapshots, backups, ISOs, and jobs | Available |
+| VM create / configure / clone / start / stop / delete | Available |
 | VM snapshot create / rollback / delete | Available |
-| Backup create / restore | Available |
+| Backup create / restore / delete | Available |
 | ISO download / delete | Available |
-| LXC create / start / stop / delete | Available |
+| LXC create / start / stop / update resources / delete | Available |
 | Container SSH-backed command execution | Available |
 | Container authorized_keys update | Available |
+| Cloud-init config (IP, gateway, DNS, user, password, SSH keys) | Available |
 | Persistent job store for long tasks | Available |
 | MCP job control tools (`list_jobs`, `get_job`, `poll_job`, `cancel_job`, `retry_job`) | Available |
 | OpenAPI `/jobs` endpoints with explicit status codes | Available |

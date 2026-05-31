@@ -128,6 +128,20 @@ snapname - Snapshot name to clone from (optional)
 Example:
 clone_vm node='pve' source_vmid='9000' target_vmid='201' name='web-201' full=true"""
 
+MIGRATE_VM_DESC = """Migrate a virtual machine to another node within the cluster.
+
+Parameters:
+node* - Current host node name (e.g. 'pve')
+vmid* - VM ID number to migrate (e.g. '100')
+target_node* - Destination node name (e.g. 'pve2')
+online - Enable live migration (optional, default: true)
+with_local_disks - Also migrate local disks to target node (optional, default: false)
+target_storage - Target storage mapping (optional, e.g. 'local-lvm:remote-lvm')
+force - Force migration even if VM uses local devices (optional, default: false)
+
+Example:
+migrate_vm node='pve' vmid='100' target_node='pve2' online=true with_local_disks=false"""
+
 EXECUTE_VM_COMMAND_DESC = """Execute commands in a VM via QEMU guest agent.
 
 Parameters:

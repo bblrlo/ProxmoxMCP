@@ -40,6 +40,7 @@ from proxmox_mcp.tools.definitions import (
     LIST_ISOS_DESC,
     LIST_SNAPSHOTS_DESC,
     LIST_TEMPLATES_DESC,
+    MIGRATE_VM_DESC,
     POLL_JOB_DESC,
     RESET_VM_DESC,
     RESTART_CONTAINER_DESC,
@@ -326,6 +327,27 @@ class VMToolsPlugin(RegistryPluginBase):
                 storage=storage,
                 pool=pool,
                 snapname=snapname,
+            )
+
+        @server.mcp.tool(description=MIGRATE_VM_DESC)
+        def migrate_vm(
+            node: Annotated[str, Field(description="Current host node name (e.g. 'pve')")],
+            vmid: Annotated[str, Field(description="VM ID number to migrate (e.g. '100')", pattern=r"^\d+$")],
+            target_node: Annotated[str, Field(description="Destination node name (e.g. 'pve2')")],
+            online: Annotated[bool, Field(description="Enable live migration if VM is running", default=True)] = True,
+            with_local_disks: Annotated[bool, Field(description="Also migrate local disks", default=False)] = False,
+            target_storage: Annotated[Optional[str], Field(description="Target storage mapping (e.g. 'local-lvm:remote-lvm')", default=None)] = None,
+            force: Annotated[bool, Field(description="Force migration even if VM uses local devices", default=False)] = False,
+            approval_token: Annotated[Optional[str], Field(description="Optional approval token for high-risk operations", default=None)] = None,
+        ) -> Any:
+            return self._wrap_sync(server, "migrate_vm", server.vm_tools.migrate_vm, high_risk=True)(
+                node=node,
+                vmid=vmid,
+                target_node=target_node,
+                online=online,
+                with_local_disks=with_local_disks,
+                target_storage=target_storage,
+                force=force,
             )
 
         @server.mcp.tool(description=EXECUTE_VM_COMMAND_DESC)

@@ -720,6 +720,82 @@ Clone Configuration:
 
         return [Content(type="text", text=result_text)]
 
+    def migrate_vm(
+        self,
+        node: str,
+        vmid: str,
+        target_node: str,
+        online: bool = True,
+        with_local_disks: bool = False,
+        target_storage: Optional[str] = None,
+        force: bool = False,
+    ) -> List[Content]:
+        """Migrate a virtual machine to another node within the cluster."""
+        try:
+            vm_status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
+        except Exception as e:
+            if "does not exist" in str(e).lower() or "not found" in str(e).lower():
+                raise ValueError(f"VM {vmid} not found on node {node}")
+            self._handle_error(f"lookup VM {vmid}", e)
+
+        vm_name = vm_status.get("name", f"VM-{vmid}")
+        vm_running = vm_status.get("status") == "running"
+
+        migrate_payload: dict[str, Any] = {
+            "target": target_node,
+            "online": 1 if online else 0,
+        }
+        if with_local_disks:
+            migrate_payload["with-local-disks"] = 1
+        if target_storage:
+            migrate_payload["target-storage"] = target_storage
+        if force:
+            migrate_payload["force"] = 1
+
+        try:
+            task_result = self.proxmox.nodes(node).qemu(vmid).migrate.post(**migrate_payload)
+        except Exception as e:
+            self._handle_error(f"migrate VM {vmid} to {target_node}", e)
+
+        job = self._register_background_job(
+            tool_name="migrate_vm",
+            summary=f"Migrate VM {vmid} to {target_node}",
+            node=node,
+            upid=task_result,
+            metadata={
+                "vmid": vmid,
+                "source_node": node,
+                "target_node": target_node,
+                "online": online,
+                "with_local_disks": with_local_disks,
+                "target_storage": target_storage,
+                "force": force,
+            },
+            retry_spec={"kind": "vm.migrate", "params": {"node": node, "vmid": vmid, "migrate_payload": migrate_payload}},
+            retry_factory=lambda: self.proxmox.nodes(node).qemu(vmid).migrate.post(**migrate_payload),
+            cancel_factory=lambda upid: self.proxmox.nodes(node).tasks(upid).status.stop.post(),
+        )
+
+        migration_type = "live" if online and vm_running else "offline"
+        result_text = f"""VM migration initiated successfully
+
+Migration Configuration:
+  - VM: {vmid} ({vm_name})
+  - Source Node: {node}
+  - Target Node: {target_node}
+  - Migration Type: {migration_type}"""
+
+        if with_local_disks:
+            result_text += "\n  - Local Disk Migration: enabled"
+        if target_storage:
+            result_text += f"\n  - Target Storage: {target_storage}"
+        if force:
+            result_text += "\n  - Force: enabled"
+
+        result_text += f"\n\nTask ID: {task_result}\nJob ID: {job['job_id'] if job else 'n/a'}"
+
+        return [Content(type="text", text=result_text)]
+
     def start_vm(self, node: str, vmid: str) -> List[Content]:
         """Start a virtual machine.
         

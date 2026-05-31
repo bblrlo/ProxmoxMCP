@@ -1072,6 +1072,51 @@ async def test_clone_vm(server, mock_proxmox):
 
 
 @pytest.mark.asyncio
+async def test_migrate_vm(server, mock_proxmox):
+    """Test migrate_vm tool."""
+    proxmox = mock_proxmox.return_value
+
+    vm_api = Mock()
+    vm_api.status.current.get.return_value = {"status": "running", "name": "web-server"}
+    vm_api.migrate.post.return_value = "UPID:migrate-100"
+
+    node_api = Mock()
+    node_api.qemu.return_value = vm_api
+    proxmox.nodes.return_value = node_api
+
+    response = await server.mcp.call_tool(
+        "migrate_vm",
+        {
+            "node": "node1",
+            "vmid": "100",
+            "target_node": "node2",
+            "online": True,
+            "with_local_disks": True,
+        },
+    )
+
+    assert "migration initiated successfully" in response[0].text
+    assert "web-server" in response[0].text
+    assert "node2" in response[0].text
+    assert "live" in response[0].text
+    assert "Job ID:" in response[0].text
+    vm_api.migrate.post.assert_called_once_with(target="node2", online=1, **{"with-local-disks": 1})
+
+    jobs = await server.mcp.call_tool("list_jobs", {"tool_name": "migrate_vm", "limit": 1})
+    jobs_payload = json.loads(jobs[0].text)
+    assert len(jobs_payload) == 1
+    assert jobs_payload[0]["tool_name"] == "migrate_vm"
+    assert jobs_payload[0]["retry_spec"] == {
+        "kind": "vm.migrate",
+        "params": {
+            "node": "node1",
+            "vmid": "100",
+            "migrate_payload": {"target": "node2", "online": 1, "with-local-disks": 1},
+        },
+    }
+
+
+@pytest.mark.asyncio
 async def test_rollback_snapshot_refuses_to_delete_child_snapshots(server, mock_proxmox):
     """Rollback must not implicitly delete newer child snapshots."""
     snapshot_api = mock_proxmox.return_value.nodes.return_value.qemu.return_value.snapshot
